@@ -1,0 +1,11 @@
+[package]
+name = "BacteriaGraphing"
+version = "0.1.0"
+authors = ["Pavel Krauz <pavel.krauz1@gmail.com>"]
+edition = "2018"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wasm-bindgen = "0.2.87"
