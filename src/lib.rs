@@ -1,43 +1,33 @@
-// The wasm-pack uses wasm-bindgen to build and generate JavaScript binding file.
-// Import the wasm-bindgen crate.
 use wasm_bindgen::prelude::*;
 use web_sys::HtmlCanvasElement;
 
-mod func_plot;
-
-
-#[global_allocator]
-static ALLOC: wee_alloc::WeeAlloc = wee_alloc::WeeAlloc::INIT;
-
 /// Type alias for the result of a drawing function.
-pub type DrawResult<T> = Result<T, Box<dyn std::error::Error>>;
+
+use plotters::prelude::*;
+use plotters_canvas::CanvasBackend;
 
 
 #[wasm_bindgen]
-pub fn add(a: i32, b: i32) -> i32 {
-  return a + b;
-}
+pub fn draw() {
+    let canvas_backend = CanvasBackend::new("canvas").expect("cannot find canvas");
+    let root_drawing_area = canvas_backend.into_drawing_area();
 
+    root_drawing_area.fill(&WHITE).unwrap();
 
-
-
-
-#[wasm_bindgen]
-pub struct Chart {
-    convert: Box<dyn Fn((i32, i32)) -> Option<(f64, f64)>>,
-}
-
-
-#[wasm_bindgen]
-pub fn power(canvas_id: &str, power: i32) -> Result<Chart, JsValue> {
-    let map_coord = func_plot::draw(canvas_id, power).map_err(|err| err.to_string())?;
-    Ok(Chart {
-        convert: Box::new(move |coord| map_coord(coord).map(|(x, y)| (x.into(), y.into()))),
-    })
-}
-
-
-#[wasm_bindgen]
-impl Chart {
+    let mut chart = ChartBuilder::on(&root_drawing_area)
+        .set_label_area_size(LabelAreaPosition::Left, 40)
+        .set_label_area_size(LabelAreaPosition::Bottom, 40)
+        
+        .build_cartesian_2d((1..100).log_scale(), (1..100).log_scale())
+        .unwrap();
     
+    chart.configure_mesh().draw().unwrap();
+
+    chart.draw_series(
+        DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+    ).unwrap();
+
 }
+
+const DATA1: [(i32, i32); 30] =  [(-3, 1), (-2, 3), (4, 2), (3, 0), (6, -5), (3, 11), (6, 0), (2, 14), (3, 9), (14, 7), (8, 11), (10, 16), (7, 15), (13, 8), (17, 14), (13, 17), (19, 11), (18, 8), (15, 8), (23, 23), (15, 20), (22, 23), (22, 21), (21, 30), (19, 28), (22, 23), (30, 23), (26, 35), (33, 19), (26, 19)];
+
