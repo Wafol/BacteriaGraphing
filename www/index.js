@@ -9,7 +9,9 @@ function sleep1(ms) {
 /** Main entry point */
 export async function main() {
     let start = Date.now();
-    let graph_time = draw();
+    let graph_time = 0;
+    setTimeout(draw, 2);
+    //draw();
     let timeTaken = Date.now() - start;
 
     console.log("Total time taken : " + timeTaken + " milliseconds");
