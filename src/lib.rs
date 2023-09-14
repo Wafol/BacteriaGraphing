@@ -19,6 +19,15 @@ use std::rc::Rc;
 use std::cell::RefCell;
 
 
+macro_rules! console_log {
+    ($($t:tt)*) => (log(&format_args!($($t)*).to_string()))
+}
+
+#[wasm_bindgen]
+extern "C" {
+    #[wasm_bindgen(js_namespace = console)]
+    fn log(s: &str);
+}
 
 
 #[wasm_bindgen]
@@ -61,22 +70,146 @@ let mut bac_data = BacData::default();
 }
 
 
+#[wasm_bindgen]
+pub fn configureWebsocketClient() {
+    //setVarA();
+    configureWebsocketClient2();
+}
 
+static mut A: i32 = 0;
+
+fn setVarA() {
+    unsafe {
+        A = 1;
+    }
+}
+
+static mut CLIENT_BUFFER: Vec<[i32; 7]> = Vec::new(); 
+
+pub fn configureWebsocketClient2() -> Result<(), WebSocketError> {
+    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
+
+    client.set_on_error(Some(Box::new(|error| {
+            //error!("{:#?}", error);
+    })));
+    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
+        //info!("{:#?}", client.status);
+        //info!("Sending message...");
+        //console_log!("Sending message...");
+
+        client.send_string("Hello, World!").unwrap();
+        client.send_binary(vec![20]).unwrap();
+    })));
+    client.set_on_close(Some(Box::new(|_evt| {
+        //info!("Connection closed");
+        //console_log!("Connection closed");
+    })));
+    client.set_on_message(Some(Box::new(
+        |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
+            //info!("New Message: {:#?}", message);
+
+            match message {
+                wasm_sockets::Message::Text(text) => {
+                    // Handle text message (e.g., display or process the text)
+                    //console_log!("Received text message: {}", text);
+                }
+                wasm_sockets::Message::Binary(data) => {
+                    // Handle binary message (e.g., process binary data)
+                    // Note: 'data' is a Vec<u8> containing binary data.
+                    //console_log!("Received binary message with {} bytes", data.len());
+                    console_log!("Received binary message {} {} {} {}", data[0], data[1], data[2], data[3]); 
+
+                    let mut arr: [i32; 7] = [0; 7];
+                    for i in 0..(data.len()/4) {
+                        let mut num32 = 0;
+
+                        for j in 0..4 {
+                            num32 <<= 8;
+                            num32 |= data[(i*4) + j] as i32; //(i*4) + j
+                        }
+                        
+                        arr[i] = num32;
+                    }
+
+                    //let draw_data: [(i32, i32); 1] = [(arr[1], arr[2])];
+                    
+                    unsafe {
+                        CLIENT_BUFFER.push(arr);
+                    }
+                    //let b = *a;
+/*
+                    let mut chart_ref = &mut *chart;
+                    chart_ref.draw_series(
+                        draw_data.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+                    ).unwrap();
+                    */
+
+                    //console_log!("one cell data: {:?}", arr);
+                }
+            }
+
+            //console_log!("New Message: {:#?}", message);
+        },
+    )));
+
+
+    Ok(())
+}
+
+static CANVAS: CanvasBackend = CanvasBackend::new("canvas").expect("cannot find canvas");
+static ROOT:DrawingArea<CanvasBackend, Shift> = canvas_backend.into_drawing_area();
 
 #[wasm_bindgen]
 pub fn draw() {
-    draw2();
+    ///////////////////////INIT CHART///////////////////////////////////////////////////////////
+    let canvas_backend = CanvasBackend::new("canvas").expect("cannot find canvas");
+    let root_drawing_area = canvas_backend.into_drawing_area();
+    
+    root_drawing_area.fill(&WHITE).unwrap();
+
+    let mut chart = Box::new(ChartBuilder::on(&root_drawing_area)
+        .set_label_area_size(LabelAreaPosition::Left, 50)
+        .set_label_area_size(LabelAreaPosition::Bottom, 50)
+        .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
+        .unwrap());
+    
+    chart.configure_mesh()
+    .x_desc("x = Array::range(1., 7., 0.1);")
+    .y_desc("y = f(x)")
+    .draw().unwrap();
+    ///////////////////////////////////////////////////////////////////////////////////////////
+/*
+    unsafe {
+        if A == 1 {
+            chart.draw_series(
+            DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+            ).unwrap();   
+        }
+        
+    }*/
+    
+    
+    unsafe {
+        loop {
+            if CLIENT_BUFFER.len() > 0 {
+                chart.draw_series(
+                    DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+                ).unwrap();
+
+                break; 
+            }
+
+        }
+    } 
+
+    
 }
 
-//static MY_STATIC_VAR: i32 = 42;
-
-//static BUFFER: Vec<u8> = Vec<u8>::default;
 
 pub fn draw2() -> Result<(), WebSocketError> {
     ///////////////////////INIT CHART///////////////////////////////////////////////////////////
     let canvas_backend = CanvasBackend::new("canvas").expect("cannot find canvas");
-    //let root_drawing_area = canvas_backend.into_drawing_area();
-    static root_drawing_area: DrawingArea<CanvasBackend, Shift> = canvas_backend.into_drawing_area();
+    let root_drawing_area = canvas_backend.into_drawing_area();
     
     //root_drawing_area.fill(&WHITE).unwrap();
 
@@ -94,79 +227,6 @@ pub fn draw2() -> Result<(), WebSocketError> {
     .draw().unwrap();
 */
     ///////////////////////////////////////////////////////////////////////////////////////////
-
-    
-    //let x = Box::new(32);
-
-    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
-    
-
-    client.set_on_error(Some(Box::new(move |error| {
-        //error!("{:#?}", error);
-
-        let a = root_drawing_area;
-        let canvas = *chart;
-    })));
-    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
-        //info!("{:#?}", client.status);
-        //info!("Sending message...");
-        //console_log!("Sending message...");
-
-        client.send_string("Hello, World!").unwrap();
-        client.send_binary(vec![20]).unwrap();
-    })));
-    client.set_on_close(Some(Box::new(|_evt| {
-        //info!("Connection closed");
-        //console_log!("Connection closed");
-    })));
-    client.set_on_message(Some(Box::new(move |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
-            //info!("New Message: {:#?}", message);
-            
-
-            match message {
-                wasm_sockets::Message::Text(text) => {
-                    // Handle text message (e.g., display or process the text)
-                    //console_log!("Received text message: {}", text);
-                }
-                wasm_sockets::Message::Binary(data) => {
-                    // Handle binary message (e.g., process binary data)
-                    // Note: 'data' is a Vec<u8> containing binary data.
-                    //console_log!("Received binary message with {} bytes", data.len());
-                    //console_log!("Received binary message {} {} {} {}", data[0], data[1], data[2], data[3]); 
-
-                    let mut arr: [i32; 7] = [0; 7];
-                    for i in 0..(data.len()/4) {
-                        let mut num32 = 0;
-
-                        for j in 0..4 {
-                            num32 <<= 8;
-                            num32 |= data[(i*4) + j] as i32; //(i*4) + j
-                        }
-                        
-                        arr[i] = num32;
-                    }
-
-                    let draw_data: [(i32, i32); 1] = [(arr[1], arr[2])];
-                    
-                    //let b = *a;
-                    /*
-                    let mut chart_ref = &mut *chart;
-                    chart_ref.draw_series(
-                        draw_data.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-                    ).unwrap();
-                    */
-
-                    //console_log!("one cell data: {:?}", arr);
-                }
-            }
-
-            //console_log!("New Message: {:#?}", message);
-        },
-    )));
-
-
-
-
 
     //create_and_configure_client();
 
@@ -193,96 +253,6 @@ pub fn draw2() -> Result<(), WebSocketError> {
     //root_drawing_area.present().unwrap();
 
 }
-
-
-
-fn create_and_configure_client() -> Result<(), WebSocketError> {
-    let x = Box::new(42);
-
-
-    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
-    
-
-    client.set_on_error(
-        Some(Box::new(move |error| {
-            //error!("{:#?}", error);
-
-            let a= *x;
-        }
-        ))
-    );
-    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
-        //info!("{:#?}", client.status);
-        //info!("Sending message...");
-        //console_log!("Sending message...");
-
-        client.send_string("Hello, World!").unwrap();
-        client.send_binary(vec![20]).unwrap();
-    })));
-    client.set_on_close(Some(Box::new(|_evt| {
-        //info!("Connection closed");
-        //console_log!("Connection closed");
-    })));
-    client.set_on_message(Some(Box::new(
-        |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
-            //info!("New Message: {:#?}", message);
-
-            match message {
-                wasm_sockets::Message::Text(text) => {
-                    // Handle text message (e.g., display or process the text)
-                    //console_log!("Received text message: {}", text);
-                }
-                wasm_sockets::Message::Binary(data) => {
-                    // Handle binary message (e.g., process binary data)
-                    // Note: 'data' is a Vec<u8> containing binary data.
-                    //console_log!("Received binary message with {} bytes", data.len());
-                    //console_log!("Received binary message {} {} {} {}", data[0], data[1], data[2], data[3]); 
-
-                    let mut arr: [i32; 7] = [0; 7];
-                    for i in 0..(data.len()/4) {
-                        let mut num32 = 0;
-
-                        for j in 0..4 {
-                            num32 <<= 8;
-                            num32 |= data[(i*4) + j] as i32; //(i*4) + j
-                        }
-                        
-                        arr[i] = num32;
-                    }
-
-                    let draw_data: [(i32, i32); 1] = [(arr[1], arr[2])];
-                    
-                    //let b = *a;
-/*
-                    let mut chart_ref = &mut *chart;
-                    chart_ref.draw_series(
-                        draw_data.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-                    ).unwrap();
-                    */
-
-                    //console_log!("one cell data: {:?}", arr);
-                }
-            }
-
-            //console_log!("New Message: {:#?}", message);
-        },
-    )));
-
-
-    Ok(())
-}
-
-
-
-
-
-
-
-
-
-
-
-
 pub fn draw3() -> Result<(), WebSocketError> {
     ///////////////////////INIT CHART///////////////////////////////////////////////////////////
     let canvas_backend = CanvasBackend::new("canvas").expect("cannot find canvas");
@@ -293,7 +263,7 @@ pub fn draw3() -> Result<(), WebSocketError> {
         .set_label_area_size(LabelAreaPosition::Left, 50)
         .set_label_area_size(LabelAreaPosition::Bottom, 50)
         
-        .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
+        .build_cartesian_2d((1..100).log_scale(), (1..100).log_scale())
         .unwrap();
     
     chart.configure_mesh()
@@ -305,68 +275,19 @@ pub fn draw3() -> Result<(), WebSocketError> {
 
     
 /*
-    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
-    client.set_on_error(Some(Box::new(|error| {
-        //error!("{:#?}", error);
-    })));
-    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
-        //info!("{:#?}", client.status);
-        //info!("Sending message...");
-        //console_log!("Sending message...");
+    let mut arr: [i32; 7] = [0; 7];
+    for i in 0..(data.len()/4) {
+        let mut num32 = 0;
 
-        client.send_string("Hello, World!").unwrap();
-        client.send_binary(vec![20]).unwrap();
-    })));
-    client.set_on_close(Some(Box::new(|_evt| {
-        //info!("Connection closed");
-        //console_log!("Connection closed");
-    })));
-    client.set_on_message(Some(Box::new(
-        |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
-            //info!("New Message: {:#?}", message);
+        for j in 0..4 {
+            num32 <<= 8;
+            num32 |= data[(i*4) + j] as i32; //(i*4) + j
+        }
+        
+        arr[i] = num32;
+    }
 
-            match message {
-                wasm_sockets::Message::Text(text) => {
-                    // Handle text message (e.g., display or process the text)
-                    //console_log!("Received text message: {}", text);
-                }
-                wasm_sockets::Message::Binary(data) => {
-                    // Handle binary message (e.g., process binary data)
-                    // Note: 'data' is a Vec<u8> containing binary data.
-                    //console_log!("Received binary message with {} bytes", data.len());
-                    //console_log!("Received binary message {} {} {} {}", data[0], data[1], data[2], data[3]); 
-
-                    let mut arr: [i32; 7] = [0; 7];
-                    for i in 0..(data.len()/4) {
-                        let mut num32 = 0;
-
-                        for j in 0..4 {
-                            num32 <<= 8;
-                            num32 |= data[(i*4) + j] as i32; //(i*4) + j
-                        }
-                        
-                        arr[i] = num32;
-                    }
-
-                    let draw_data: [(i32, i32); 1] = [(arr[1], arr[2])];
-                    let chart = *boxed_chart;
-                    chart.draw_series(
-                        //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
-                        
-                        /*data_vec.iter().map(|one_bac: &OneBacDataTemplate|{
-                
-                            Pixel::new((one_bac.data[1], one_bac.data[2]), RGBAColor(0, 0, 255, 0.5))
-                        }),*/
-                        draw_data.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-                    ).unwrap();
-                    
-                    //console_log!("one cell data: {:?}", arr);
-                }
-            }
-
-            //console_log!("New Message: {:#?}", message);
-        },
-    )));
+    let draw_data: [(i32, i32); 1] = [(arr[1], arr[2])];
 */
 
 /*    

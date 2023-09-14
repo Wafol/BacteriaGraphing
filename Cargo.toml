@@ -18,6 +18,7 @@ js-sys = "0.3"
 lazy_static = "1.4" 
 
 wasm-sockets = "1.0.0"
+wasm-bindgen-futures = "0.4.37"
 
 
 [dependencies.web-sys]

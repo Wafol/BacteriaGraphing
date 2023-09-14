@@ -1,5 +1,5 @@
 import { draw } from "../pkg/BacteriaGraphing";
-import { clck } from "../pkg/BacteriaGraphing";
+import { configureWebsocketClient } from "../pkg/BacteriaGraphing";
 
 
 function sleep1(ms) {
@@ -8,14 +8,15 @@ function sleep1(ms) {
 
 /** Main entry point */
 export async function main() {
-    let start = Date.now();
-    let graph_time = 0;
-    setTimeout(draw, 2);
-    //draw();
-    let timeTaken = Date.now() - start;
+    //let start = Date.now();
+    //let graph_time = 0;
+    configureWebsocketClient();
+    draw();
 
-    console.log("Total time taken : " + timeTaken + " milliseconds");
-    console.log("Graphing time:" + graph_time + " milliseconds");
+    //let timeTaken = Date.now() - start;
+
+    //console.log("Total time taken : " + timeTaken + " milliseconds");
+    //console.log("Graphing time:" + graph_time + " milliseconds");
     
 
     /*
@@ -26,3 +27,4 @@ export async function main() {
     */
 
 }
+
