@@ -18,6 +18,10 @@ export async function main() {
     console.log("Graphing time:" + graph_time + " milliseconds");
     
 
+    setInterval(function() {
+        myFunction("Hello", "World");
+    }, 1000);
+
     /*
     for (let i = 0; i < 50; i++) {
         await sleep1(1000);

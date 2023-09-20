@@ -61,266 +61,109 @@ let mut bac_data = BacData::default();
     return bac_data;
 }
 
-
-
 #[wasm_bindgen]
 pub fn draw() {
     draw2();
 }
 
 
-pub struct StructWithRef<'a> {
-    ref_str: &'a String,
-}
-
-impl<'a> StructWithRef<'a> {
-    pub fn on(root: &'a String) -> Self {
-        Self {
-            ref_str: root,
-        }
-    }
-}
-
-// pub struct StructWithRef {
-//     ref_str: String,
-// }
-
-// impl StructWithRef {
-//     pub fn on(root: String) -> Self {
-//         Self {
-//             ref_str: root,
-//         }
-//     }
-// }
-
-
-//static root_drawing_area2: DrawingArea2<CanvasBackend, Shift>;
+static mut COUNTER: usize = 0;
 
 pub fn draw2() -> Result<(), WebSocketError> {
     ///////////////////////INIT CHART///////////////////////////////////////////////////////////
     let canvas_backend = CanvasBackend::new("canvas").expect("cannot find canvas");
-    let root_drawing_area: DrawingArea<CanvasBackend, Shift> = canvas_backend.into_drawing_area();
+    let root_drawing_area = canvas_backend.into_drawing_area();
 
-    let mut chart: ChartContext<'static, CanvasBackend, _> = ChartBuilder::on(&root_drawing_area)
-        .set_label_area_size(LabelAreaPosition::Left, 50)
-        .set_label_area_size(LabelAreaPosition::Bottom, 50)
-        
-        .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
-        .unwrap();    
+    root_drawing_area.fill(&WHITE).unwrap();
     
+    let mut chart = ChartBuilder::on(&root_drawing_area)
+    .set_label_area_size(LabelAreaPosition::Left, 50)
+    .set_label_area_size(LabelAreaPosition::Bottom, 50)
     
+    .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
+    .unwrap();
+
+    chart.configure_mesh().draw().unwrap();
+
+    
+    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
+
+    client.set_on_message(Some(Box::new(
+        move |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
+
+            let canvas_backend2 = CanvasBackend::new("canvas").expect("cannot find canvas");
+            let root_drawing_area2 = canvas_backend2.into_drawing_area();
+
+            let mut chart = ChartBuilder::on(&root_drawing_area2)
+            .set_label_area_size(LabelAreaPosition::Left, 50)
+            .set_label_area_size(LabelAreaPosition::Bottom, 50)
+            
+            .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
+            .unwrap();
+
+            unsafe {
+            let data2 = [DATA1[COUNTER]];
+
+            chart.draw_series(
+                //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
+                /* 
+                data_vec.iter().map(|one_bac: &OneBacDataTemplate| {
+                    //Pixel::new((one_bac.data[1], one_bac.data[2]), RGBAColor(0, 0, 255, 1.0))
+                    Circle::new((one_bac.data[1], one_bac.data[2]), 5, &BLUE)
+                }),*/
+
+                data2.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+                //DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+            ).unwrap();
+            
+           
+                COUNTER += 1;
+            }
+            
+        },
+    )));
+
+    /* 
     let bac_data = loadData();
     let data_vec = bac_data.data_vec;
 
     let then = js_sys::Date::now();
-    
-    chart.draw_series(
-        //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
-        data_vec.iter().map(|one_bac: &OneBacDataTemplate|{
 
-            Pixel::new((one_bac.data[1], one_bac.data[2]), RGBAColor(0, 0, 255, 0.5))
-        }),
-        //DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-    ).unwrap();
-    let now = js_sys::Date::now();
-    //now - then
-    
+    for i in 0..10 {
+        let canvas_backend2 = CanvasBackend::new("canvas").expect("cannot find canvas");
+        let root_drawing_area2 = canvas_backend2.into_drawing_area();
 
-    Ok(())
-
-    //root_drawing_area.present().unwrap();
-
-}
-
-
-fn create_and_configure_client(mut chart: ChartContext<'static, CanvasBackend, Shift>) -> Result<(), WebSocketError> {
-    //let x = Box::new(42);
-
-    let mut rc_chart = Rc::new(chart);
-    let mut cloned_chart = rc_chart.clone();
-
-
-    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
-    
-
-    client.set_on_error(Some(Box::new(move |error| {
-            //error!("{:#?}", error);
-            cloned_chart.plotting_area();
-            //chart.plotting_area();    
-    })));
-
-    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
-        //info!("{:#?}", client.status);
-        //info!("Sending message...");
-        //console_log!("Sending message...");
-
-        client.send_string("Hello, World!").unwrap();
-        client.send_binary(vec![20]).unwrap();
-    })));
-    client.set_on_close(Some(Box::new(|_evt| {
-        //info!("Connection closed");
-        //console_log!("Connection closed");
-    })));
-    client.set_on_message(Some(Box::new(
-        |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
-            //info!("New Message: {:#?}", message);
-
-            match message {
-                wasm_sockets::Message::Text(text) => {
-                    // Handle text message (e.g., display or process the text)
-                    //console_log!("Received text message: {}", text);
-                }
-                wasm_sockets::Message::Binary(data) => {
-                    // Handle binary message (e.g., process binary data)
-                    // Note: 'data' is a Vec<u8> containing binary data.
-                    //console_log!("Received binary message with {} bytes", data.len());
-                    //console_log!("Received binary message {} {} {} {}", data[0], data[1], data[2], data[3]); 
-
-                    let mut arr: [i32; 7] = [0; 7];
-                    for i in 0..(data.len()/4) {
-                        let mut num32 = 0;
-
-                        for j in 0..4 {
-                            num32 <<= 8;
-                            num32 |= data[(i*4) + j] as i32; //(i*4) + j
-                        }
-                        
-                        arr[i] = num32;
-                    }
-
-                    let draw_data: [(i32, i32); 1] = [(arr[1], arr[2])];
-                    
-                    //let b = *a;
-/*
-                    let mut chart_ref = &mut *chart;
-                    chart_ref.draw_series(
-                        draw_data.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-                    ).unwrap();
-                    */
-
-                    //console_log!("one cell data: {:?}", arr);
-                }
-            }
-
-            //console_log!("New Message: {:#?}", message);
-        },
-    )));
-
-
-    Ok(())
-}
-
-
-
-
-
-
-
-
-pub fn draw3() -> Result<(), WebSocketError> {
-    ///////////////////////INIT CHART///////////////////////////////////////////////////////////
-    let canvas_backend = CanvasBackend::new("canvas").expect("cannot find canvas");
-    let root_drawing_area = canvas_backend.into_drawing_area();
-    root_drawing_area.fill(&WHITE).unwrap();
-
-    let mut chart = ChartBuilder::on(&root_drawing_area)
+        let mut chart = ChartBuilder::on(&root_drawing_area2)
         .set_label_area_size(LabelAreaPosition::Left, 50)
         .set_label_area_size(LabelAreaPosition::Bottom, 50)
         
         .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
         .unwrap();
+
+        let data2 = [DATA1[i]];
+
+        chart.draw_series(
+            //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
+            /* 
+            data_vec.iter().map(|one_bac: &OneBacDataTemplate| {
+                //Pixel::new((one_bac.data[1], one_bac.data[2]), RGBAColor(0, 0, 255, 1.0))
+                Circle::new((one_bac.data[1], one_bac.data[2]), 5, &BLUE)
+            }),*/
+
+            data2.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+            //DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+        ).unwrap();
+
+
+    }
     
-    chart.configure_mesh()
-    .x_desc("x = Array::range(1., 7., 0.1);")
-    .y_desc("y = f(x)")
-    .draw().unwrap();
-
-    ///////////////////////////////////////////////////////////////////////////////////////////
-
     
-/*
-    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
-    client.set_on_error(Some(Box::new(|error| {
-        //error!("{:#?}", error);
-    })));
-    client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
-        //info!("{:#?}", client.status);
-        //info!("Sending message...");
-        //console_log!("Sending message...");
-
-        client.send_string("Hello, World!").unwrap();
-        client.send_binary(vec![20]).unwrap();
-    })));
-    client.set_on_close(Some(Box::new(|_evt| {
-        //info!("Connection closed");
-        //console_log!("Connection closed");
-    })));
-    client.set_on_message(Some(Box::new(
-        |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
-            //info!("New Message: {:#?}", message);
-
-            match message {
-                wasm_sockets::Message::Text(text) => {
-                    // Handle text message (e.g., display or process the text)
-                    //console_log!("Received text message: {}", text);
-                }
-                wasm_sockets::Message::Binary(data) => {
-                    // Handle binary message (e.g., process binary data)
-                    // Note: 'data' is a Vec<u8> containing binary data.
-                    //console_log!("Received binary message with {} bytes", data.len());
-                    //console_log!("Received binary message {} {} {} {}", data[0], data[1], data[2], data[3]); 
-
-                    let mut arr: [i32; 7] = [0; 7];
-                    for i in 0..(data.len()/4) {
-                        let mut num32 = 0;
-
-                        for j in 0..4 {
-                            num32 <<= 8;
-                            num32 |= data[(i*4) + j] as i32; //(i*4) + j
-                        }
-                        
-                        arr[i] = num32;
-                    }
-
-                    let draw_data: [(i32, i32); 1] = [(arr[1], arr[2])];
-                    let chart = *boxed_chart;
-                    chart.draw_series(
-                        //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
-                        
-                        /*data_vec.iter().map(|one_bac: &OneBacDataTemplate|{
-                
-                            Pixel::new((one_bac.data[1], one_bac.data[2]), RGBAColor(0, 0, 255, 0.5))
-                        }),*/
-                        draw_data.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-                    ).unwrap();
-                    
-                    //console_log!("one cell data: {:?}", arr);
-                }
-            }
-
-            //console_log!("New Message: {:#?}", message);
-        },
-    )));
-*/
-
-/*    
-    let bac_data = loadData();
-    let data_vec = bac_data.data_vec;
-
-    let then = js_sys::Date::now();
-    chart.draw_series(
-        //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
-        data_vec.iter().map(|one_bac: &OneBacDataTemplate|{
-
-            Pixel::new((one_bac.data[1], one_bac.data[2]), RGBAColor(0, 0, 255, 0.5))
-        }),
-        //DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-    ).unwrap();
     let now = js_sys::Date::now();
     //now - then
-*/
+    */
 
     Ok(())
+
     //root_drawing_area.present().unwrap();
 
 }
