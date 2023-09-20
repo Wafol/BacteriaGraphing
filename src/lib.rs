@@ -1,5 +1,6 @@
 use js_sys::{Math::random, Date};
 use plotters::coord::Shift;
+use plotters::coord::ranged1d::DefaultFormatting;
 use wasm_bindgen::{prelude::*, closure};
 use web_sys::HtmlCanvasElement;
 use wasm_sockets::{self, WebSocketError};
@@ -46,6 +47,7 @@ enum DataNames {
     fsc2_a = 6
 }
 
+#[derive(Copy, Clone)]
 struct OneBacDataTemplate {
     data: [i32; 7],
 }
@@ -225,9 +227,11 @@ pub fn draw2() -> Result<(), WebSocketError> {
 
     
    
-    for i in 0..1000000 {
+    for i in 0..2000 {
         let canvas_backend2 = CanvasBackend::new("canvas").expect("cannot find canvas");
         let root_drawing_area2 = canvas_backend2.into_drawing_area();
+
+        //root_drawing_area.fill(&WHITE).unwrap();
 
         let mut chart = ChartBuilder::on(&root_drawing_area2)
         .set_label_area_size(LabelAreaPosition::Left, 50)
@@ -236,9 +240,16 @@ pub fn draw2() -> Result<(), WebSocketError> {
         .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
         .unwrap();
 
-        let data2 = [(data_vec[i].data[1], data_vec[i].data[2])];
+        //let data2 = [(data_vec[i].data[1], data_vec[i].data[2])];
 
+        /*let mut data2: Vec<&OneBacDataTemplate> = Vec::new();
+        for j in 0..i {
+            data2.push(&data_vec[j]);
+        }*/
 
+        let data2 = &data_vec[0..i].to_vec();
+        
+        
 
         chart.draw_series(
             //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
@@ -249,7 +260,7 @@ pub fn draw2() -> Result<(), WebSocketError> {
             }),*/
 
             //data2.iter().map(|point| Circle::new(*point, 5, &BLUE)),
-            data2.iter().map(|point| Pixel::new(*point, RGBAColor(0, 0, 255, 1.0))),
+            data2.iter().map(|point| Pixel::new((point.data[1], point.data[2]), RGBAColor(0, 0, 255, 1.0))),
             //DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
         ).unwrap();
 
