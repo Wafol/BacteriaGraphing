@@ -79,6 +79,7 @@ pub fn draw() {
 
 
 static mut COUNTER: usize = 0;
+static mut THEN: f64 = 0.0;
 
 pub fn draw2() -> Result<(), WebSocketError> {
     ///////////////////////INIT CHART///////////////////////////////////////////////////////////
@@ -98,22 +99,21 @@ pub fn draw2() -> Result<(), WebSocketError> {
 
     
 
-
-    /*let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
+    let mut client = wasm_sockets::EventClient::new("ws://localhost:8000/ws")?;
     client.set_on_error(Some(Box::new(|error| {
         //error!("{:#?}", error);
     })));
     client.set_on_connection(Some(Box::new(|client: &wasm_sockets::EventClient| {
         //info!("{:#?}", client.status);
         //info!("Sending message...");
-        console_log!("Sending message...");
+        //console_log!("Sending message...");
 
         //client.send_string("Hello, World!").unwrap();
         //client.send_binary(vec![20]).unwrap();
     })));
     client.set_on_close(Some(Box::new(|_evt| {
         //info!("Connection closed");
-        console_log!("Connection closed");
+        //console_log!("Connection closed");
     })));
     client.set_on_message(Some(Box::new(
         |client: &wasm_sockets::EventClient, message: wasm_sockets::Message| {
@@ -122,12 +122,12 @@ pub fn draw2() -> Result<(), WebSocketError> {
             match message {
                 wasm_sockets::Message::Text(text) => {
                     // Handle text message (e.g., display or process the text)
-                    console_log!("Received text message: {}", text);
+                    //console_log!("Received text message: {}", text);
                 }
                 wasm_sockets::Message::Binary(data) => {
                     // Handle binary message (e.g., process binary data)
                     // Note: 'data' is a Vec<u8> containing binary data.
-                    console_log!("Received binary message with {} bytes", data.len());
+                    //console_log!("Received binary message with {} bytes", data.len());
                     //console_log!("Received binary message {} {} {} {}", data[0], data[1], data[2], data[3]); 
 
                     let mut arr: [i32; 7] = [0; 7];
@@ -143,6 +143,21 @@ pub fn draw2() -> Result<(), WebSocketError> {
                     }
 
 
+                    unsafe {
+                        if COUNTER == 0 {
+                            THEN = js_sys::Date::now();
+                        }
+
+                        COUNTER += 1;
+
+                        if COUNTER >= 10000 {
+                            console_log!("SPEED: 10 000 cells per {} ms", js_sys::Date::now() - THEN);
+                            COUNTER = 0;
+                        }
+                    }
+                    
+
+
                     let canvas_backend2 = CanvasBackend::new("canvas").expect("cannot find canvas");
                     let root_drawing_area2 = canvas_backend2.into_drawing_area();
 
@@ -154,7 +169,7 @@ pub fn draw2() -> Result<(), WebSocketError> {
                     .unwrap();
 
 
-                    let data2 = [DATA1[COUNTER]];
+                    let data2 = [(arr[1], arr[2])];
 
                     chart.draw_series(
                         //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
@@ -164,19 +179,21 @@ pub fn draw2() -> Result<(), WebSocketError> {
                             Circle::new((one_bac.data[1], one_bac.data[2]), 5, &BLUE)
                         }),*/
 
-                        data2.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+                        //data2.iter().map(|point| Circle::new(*point, 5, &BLUE)),
+                        data2.iter().map(|point| Pixel::new(*point, RGBAColor(0, 0, 255, 1.0))),
                         //DATA1.iter().map(|point| Circle::new(*point, 5, &BLUE)),
                     ).unwrap();
 
 
-                    console_log!("one cell data: {:?}", arr);
+                    client.send_string("Hello, World!").unwrap();
+                    //console_log!("one cell data: {:?}", arr);
                 }
             }
 
             //console_log!("New Message: {:#?}", message);
         },
     )));
-*/
+
 
 
 
@@ -219,7 +236,7 @@ pub fn draw2() -> Result<(), WebSocketError> {
     )));
 */
 
-    
+    /* 
     let bac_data = loadData();
     let data_vec = bac_data.data_vec;
 
@@ -227,7 +244,7 @@ pub fn draw2() -> Result<(), WebSocketError> {
 
     
    
-    for i in 0..2000 {
+    for i in 0..1000000 {
         let canvas_backend2 = CanvasBackend::new("canvas").expect("cannot find canvas");
         let root_drawing_area2 = canvas_backend2.into_drawing_area();
 
@@ -240,17 +257,8 @@ pub fn draw2() -> Result<(), WebSocketError> {
         .build_cartesian_2d((1..1000).log_scale(), (1..1000).log_scale())
         .unwrap();
 
-        //let data2 = [(data_vec[i].data[1], data_vec[i].data[2])];
-
-        /*let mut data2: Vec<&OneBacDataTemplate> = Vec::new();
-        for j in 0..i {
-            data2.push(&data_vec[j]);
-        }*/
-
-        let data2 = &data_vec[0..i].to_vec();
+        let data2 = [(data_vec[i].data[1], data_vec[i].data[2])];
         
-        
-
         chart.draw_series(
             //data_vec.iter().map(|one_bac: &OneBacDataTemplate| Circle::new((one_bac.w, one_bac.t), 1, &BLUE)),
             /* 
@@ -270,7 +278,7 @@ pub fn draw2() -> Result<(), WebSocketError> {
     
     let now = js_sys::Date::now();
     //now - then
-    
+    */
 
     Ok(())
 

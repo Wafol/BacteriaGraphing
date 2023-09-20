@@ -10,7 +10,7 @@ async def websocket_endpoint(websocket: WebSocket):
     
     ################GENERATING BACTERIA DATA#####################
     bac_data = []
-    num_of_cells = 10000
+    num_of_cells = 100000
 
     for i in range(0, num_of_cells):
         fr = 0
@@ -25,9 +25,9 @@ async def websocket_endpoint(websocket: WebSocket):
 
     indx = 0
 
+    
+
     while True:
-        #data = await websocket.receive_text()
-        
         #await websocket.send_text(f"Message received: {data}")
 
         if (indx > num_of_cells - 1):
@@ -36,4 +36,7 @@ async def websocket_endpoint(websocket: WebSocket):
         await websocket.send_bytes(bac_data[indx])
         indx += 1
 
-        await asyncio.sleep(1)
+        #data = await websocket.receive_text()
+
+        await asyncio.sleep(0.0001)
+
